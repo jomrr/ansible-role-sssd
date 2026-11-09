@@ -4,6 +4,7 @@
 
 __sssd_packages:
   - adcli
+  - dnsutils
   - sssd-ad
   - sssd-tools
 __sssd_validate: /usr/sbin/sssctl config-check --config %s --snippet /etc/sssd/conf.d

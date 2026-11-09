@@ -4,6 +4,7 @@
 
 __sssd_packages:
   - adcli
+  - bind-utils
   - sssd
   - sssd-ad
   - sssd-tools
