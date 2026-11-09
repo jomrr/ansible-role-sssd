@@ -1,0 +1,42 @@
+---
+# role: sssd
+# file: molecule/resources/tasks/verify_keytab.yml
+
+- name: SSSD | Obtain a machine ticket using the managed keytab
+  become: true
+  become_user: root
+  ansible.builtin.command:
+    argv:
+      - kinit
+      - -k
+      - -t
+      - '{{ sssd_keytab }}'
+      - -c
+      - FILE:/run/sssd-molecule.ccache
+      - '{{ inventory_hostname | upper }}$@{{ sssd_realm | upper }}'
+    expand_argument_vars: false
+  changed_when: false
+
+- name: SSSD | Request and decrypt each configured service ticket with the managed keytab
+  become: true
+  become_user: root
+  ansible.builtin.command:
+    argv:
+      - kvno
+      - -c
+      - FILE:/run/sssd-molecule.ccache
+      - -k
+      - '{{ sssd_keytab }}'
+      - '{{ __sssd_service_principal }}@{{ sssd_realm | upper }}'
+    expand_argument_vars: false
+  changed_when: false
+  loop: '{{ sssd_service_principals }}'
+  loop_control:
+    loop_var: __sssd_service_principal
+
+- name: SSSD | Remove the test credential cache
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: /run/sssd-molecule.ccache
+    state: absent

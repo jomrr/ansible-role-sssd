@@ -11,7 +11,7 @@ sssd_join_username: Administrator
 # Join password from a secret store; needed for the initial join or forced rejoin.
 # sssd_join_password: '{{ vault_ad_join_password }}'
 
-# DC hostname for the initial join; empty uses adcli discovery.
+# DC hostname for adcli join and SPN updates; empty uses adcli discovery.
 # Runtime DC selection uses domain_options.ad_server.
 sssd_server: ''
 
@@ -23,6 +23,11 @@ sssd_host_fqdn: '{{ ansible_facts.fqdn | lower }}'
 
 # Machine keytab used explicitly by adcli and SSSD; its parent directory must exist.
 sssd_keytab: /etc/krb5.keytab
+
+# Additional AD SPNs in service/hostname form without a realm suffix, added to the account and keytab.
+sssd_service_principals: []
+# sssd_service_principals:
+#   - HTTP/server.example.com
 
 # Rejoin on every run; enable only for deliberate machine account repair.
 sssd_force_join: false

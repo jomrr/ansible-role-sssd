@@ -58,9 +58,11 @@
           '--stdin-password']
          + (['--domain-controller=' ~ sssd_server] if sssd_server else [])
          + (['--host-fqdn=' ~ sssd_host_fqdn] if sssd_host_fqdn else [])
-         + (['--domain-ou=' ~ sssd_computer_ou] if sssd_computer_ou else []) }}
+         + (['--domain-ou=' ~ sssd_computer_ou] if sssd_computer_ou else [])
+         + (sssd_service_principals | map('regex_replace', '^', '--add-service-principal=') | list) }}
     stdin: '{{ sssd_join_password }}'
     expand_argument_vars: false
+  register: __sssd_join
   changed_when: true
   when: >-
     sssd_force_join or __sssd_keytab_principals.rc == 1 or
@@ -68,6 +70,27 @@
     | select('match', '(?i)^(?:host(?:/.*)?|[^/]+\\$)@' ~ (sssd_realm | regex_escape) ~ '$')
     | list | length == 0
   no_log: true
+  notify: restart sssd
+
+- name: SSSD | Add missing service principals to the account and keytab
+  become: true
+  become_user: root
+  ansible.builtin.command:
+    argv: >-
+      {{ ['adcli', 'update',
+          '--domain=' ~ (sssd_realm | upper),
+          '--host-keytab=' ~ sssd_keytab,
+          '--add-service-principal=' ~ __sssd_service_principal]
+         + (['--domain-controller=' ~ sssd_server] if sssd_server else [])
+         + (['--host-fqdn=' ~ sssd_host_fqdn] if sssd_host_fqdn else []) }}
+    expand_argument_vars: false
+  changed_when: true
+  loop: '{{ sssd_service_principals }}'
+  loop_control:
+    loop_var: __sssd_service_principal
+  when:
+    - not __sssd_join.changed
+    - (__sssd_service_principal ~ '@' ~ (sssd_realm | upper)) not in __sssd_keytab_principals.stdout.split()
   notify: restart sssd
 
 - name: SSSD | Activate domain identity

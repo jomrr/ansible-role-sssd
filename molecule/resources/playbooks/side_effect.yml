@@ -5,7 +5,20 @@
 - name: SSSD | Verify native option and home policy updates
   hosts: sssd_members
   gather_facts: true
+  vars:
+    sssd_service_principals:
+      - 'HTTP/{{ sssd_host_fqdn }}'
+      - 'molecule/{{ sssd_host_fqdn }}'
   tasks:
+
+    - name: SSSD | Add a service principal to an existing member without join credentials
+      ansible.builtin.include_role:
+        name: '{{ lookup(''ansible.builtin.env'', ''MOLECULE_PROJECT_DIRECTORY'') }}'
+      vars:
+        sssd_join_password: ''
+
+    - name: SSSD | Verify machine trust and service tickets after adding a principal
+      ansible.builtin.import_tasks: ../tasks/verify_keytab.yml
 
     - name: SSSD | Exercise commented NSS sources before restoring domain lookups
       become: true
@@ -57,20 +70,8 @@
       ansible.builtin.assert:
         that: __sssd_keytab_before_rejoin.stat.checksum != __sssd_keytab_after_rejoin.stat.checksum
 
-    - name: SSSD | Check machine trust after the forced rejoin
-      become: true
-      become_user: root
-      ansible.builtin.command:
-        argv:
-          - kinit
-          - -k
-          - -t
-          - '{{ sssd_keytab }}'
-          - -c
-          - MEMORY:sssd-molecule-machine-trust
-          - '{{ inventory_hostname | upper }}$@{{ sssd_realm | upper }}'
-        expand_argument_vars: false
-      changed_when: false
+    - name: SSSD | Verify machine trust and service tickets after the forced rejoin
+      ansible.builtin.import_tasks: ../tasks/verify_keytab.yml
 
     - name: SSSD | Resolve a short domain username
       ansible.builtin.getent:

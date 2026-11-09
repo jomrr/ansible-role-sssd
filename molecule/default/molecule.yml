@@ -30,6 +30,8 @@ provisioner:
         sssd_join_password: "Molecule-Only-Adm1n!"
         __sssd_test_password: "Molecule-Only-Us3r!"
         sssd_host_fqdn: "{{ inventory_hostname }}.ad.sssd.test"
+        sssd_service_principals:
+          - "HTTP/{{ sssd_host_fqdn }}"
         pam_authselect_force: true
         sssd_domain_options:
           access_provider: "ad"

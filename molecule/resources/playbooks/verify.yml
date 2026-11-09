@@ -7,20 +7,8 @@
   gather_facts: true
   tasks:
 
-    - name: SSSD | Check machine trust using the keytab
-      become: true
-      become_user: root
-      ansible.builtin.command:
-        argv:
-          - kinit
-          - -k
-          - -t
-          - '{{ sssd_keytab }}'
-          - -c
-          - MEMORY:sssd-molecule-machine-trust
-          - '{{ inventory_hostname | upper }}$@{{ sssd_realm | upper }}'
-        expand_argument_vars: false
-      changed_when: false
+    - name: SSSD | Verify machine trust and service tickets after joining
+      ansible.builtin.import_tasks: ../tasks/verify_keytab.yml
 
     - name: SSSD | Resolve the domain user through NSS
       ansible.builtin.getent:

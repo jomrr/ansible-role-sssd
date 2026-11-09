@@ -21,6 +21,8 @@ GPO login access rules through SSSD.
 
 - AD join and machine keytab through adcli, with a local klist check for a
   machine principal in the configured realm.
+- Additional service principals on the AD computer account and in its machine
+  keytab.
 - System Kerberos through jomrr.krb5 and native SSSD PAM/NSS integration through
   jomrr.pam.
 - SSSD configuration, including its NSS and PAM responder options and AD access
@@ -101,8 +103,8 @@ Join password from a secret store; needed for the initial join or forced rejoin.
 
 Type: `str`. Required: `false`.
 
-DC hostname for the initial join; empty uses adcli discovery. Runtime DC
-selection uses domain_options.ad_server.
+DC hostname for adcli join and SPN updates; empty uses adcli discovery. Runtime
+DC selection uses domain_options.ad_server.
 
 Default:
 
@@ -145,6 +147,19 @@ Default:
 
 ```yaml
 sssd_keytab: /etc/krb5.keytab
+```
+
+### `sssd_service_principals`
+
+Type: `list`. Required: `false`.
+
+Additional AD service principals in service/hostname form without a realm
+suffix, added to the computer account and machine keytab.
+
+Default:
+
+```yaml
+sssd_service_principals: []
 ```
 
 ### `sssd_force_join`
@@ -254,7 +269,7 @@ sssd_config_no_log: false
 ## Check Mode
 
 Supported on an already prepared host; klist reads the keytab in check mode and
-the adcli join task is skipped.
+adcli changes are skipped.
 
 - A first run in check mode cannot install required tools or create a usable
   machine keytab. Run a normal converge before checking a fresh host.
@@ -332,6 +347,22 @@ SSSD configuration and keytab changes restart SSSD.
   keytab or absent machine principal triggers adcli join; an existing matching
   principal skips it without contacting a DC. Use sssd_force_join only for
   deliberate repair. sssd_join_password is needed only when a join runs.
+- sssd_service_principals accepts AD SPNs such as HTTP/server.example.com
+  without an @REALM suffix. adcli adds the configured realm to their keytab
+  entries. Service names are case-sensitive in MIT Kerberos; use HTTP for HTTP
+  services. The default empty list leaves the standard adcli principals
+  unchanged.
+- Additional SPNs are passed to adcli join. On an already joined host, missing
+  keytab principals are added with adcli update using the machine credentials,
+  without a join password or forced rejoin. Existing keytab entries are the
+  local idempotency check; the role does not audit AD-side SPN changes. Removing
+  an item from the list does not delete it from AD or the keytab.
+- Requested SPNs must not belong to another AD account. The joining account or,
+  for later additions, the computer account needs permission to register them;
+  aliases may require additional AD permissions and hostname attributes.
+  Applications must use sssd_keytab and have permission to read it. Separate
+  application keytabs and service configuration remain outside this role. Normal
+  SSSD/adcli machine-password renewal retains these principals.
 - jomrr.samba is used only by the Molecule AD controller fixture. Role tasks use
   klist and adcli directly.
 - AD user/group enumeration is deprecated since SSSD 2.10 and its extended
@@ -376,6 +407,17 @@ Use centrally assigned IDs and create homes at login.
       sssd_realm: AD.EXAMPLE.COM
       sssd_join_password: "{{ vault_ad_join_password }}"
       sssd_computer_ou: OU=Linux,DC=ad,DC=example,DC=com
+```
+
+### HTTP service principal for Cockpit
+
+Add HTTP/server.example.com@EXAMPLE.COM to the machine keytab used by MIT Kerberos.
+
+```yaml
+sssd_realm: EXAMPLE.COM
+sssd_host_fqdn: server.example.com
+sssd_service_principals:
+  - HTTP/server.example.com
 ```
 
 ### Native SSSD options and short login names
@@ -447,6 +489,7 @@ sssd_domain_options:
 - [SSSD AD provider](https://sssd.io/docs/ad/ad-provider.html)
 - [SSSD ID mapping](https://github.com/SSSD/sssd/blob/master/src/man/include/ldap_id_mapping.xml)
 - [adcli manual](https://www.freedesktop.org/software/realmd/adcli/adcli.html)
+- [adcli service principal options](https://manpages.debian.org/trixie/adcli/adcli.8.en.html)
 
 ## Author
 

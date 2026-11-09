@@ -198,24 +198,3 @@
         regexp: ^\s*{{ ansible_facts.default_ipv4.address | regex_escape }}\s+
         line: '{{ ansible_facts.default_ipv4.address }} {{ sssd_host_fqdn }} {{ inventory_hostname }}'
         unsafe_writes: true
-
-    - name: SSSD | Prepare Kerberos tools for the unrelated-principal fixture
-      ansible.builtin.include_role:
-        name: jomrr.krb5
-      vars:
-        krb5_realm: '{{ sssd_realm }}'
-      when: inventory_hostname == 'sas-autorid'
-
-    - name: SSSD | Seed a custom keytab with a foreign-realm machine principal
-      become: true
-      become_user: root
-      ansible.builtin.command:
-        argv: [ktutil]
-        stdin: |
-          addent -password -p host/sas-autorid.ad.sssd.test@OTHER.TEST -k 1 -e aes256-cts-hmac-sha1-96
-          Unrelated-Molecule-Key!
-          wkt {{ sssd_keytab }}
-          quit
-        creates: '{{ sssd_keytab }}'
-      when: inventory_hostname == 'sas-autorid'
-      no_log: true

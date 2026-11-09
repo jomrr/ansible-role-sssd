@@ -22,8 +22,8 @@ argument_specs:
         no_log: true
       sssd_server:
         type: str
-        description: DC hostname for the initial join; empty uses adcli discovery. Runtime
-          DC selection uses domain_options.ad_server.
+        description: DC hostname for adcli join and SPN updates; empty uses adcli discovery.
+          Runtime DC selection uses domain_options.ad_server.
         default: ''
       sssd_computer_ou:
         type: str
@@ -38,6 +38,12 @@ argument_specs:
         description: Machine keytab used explicitly by adcli and SSSD; its parent directory
           must exist.
         default: /etc/krb5.keytab
+      sssd_service_principals:
+        type: list
+        elements: str
+        description: Additional AD service principals in service/hostname form without a
+          realm suffix, added to the computer account and machine keytab.
+        default: []
       sssd_force_join:
         type: bool
         description: Rejoin on every run; enable only for deliberate machine account repair.
